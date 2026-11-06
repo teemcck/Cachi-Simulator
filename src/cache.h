@@ -65,6 +65,16 @@ typedef enum {
 } CacheAccessResult;
 
 /*
+ * Describes the line an access evicted, if any.
+ * When dirty is true, address is the first byte of the evicted block and
+ * the block must be written back to the next level of the hierarchy.
+ */
+typedef struct {
+    bool dirty;
+    uint64_t address;
+} CacheEviction;
+
+/*
  * Dynamically allocates new cache using provided configuration.
  */
 Cache* create_cache(const Config* config);
@@ -72,12 +82,21 @@ Cache* create_cache(const Config* config);
 /*
  * Creates an access request to specified cache.
  * Operation defines read/write/etc.
+ *
+ * On a miss the block is allocated in this cache. If that evicts a dirty
+ * line and eviction is not NULL, eviction describes the block to write back.
  */
 CacheAccessResult cache_access(
     Cache *cache,
     uint64_t address,
-    CacheOperation operation
+    CacheOperation operation,
+    CacheEviction *eviction
 );
+
+/*
+ * Returns the address of the first byte in the block containing address.
+ */
+uint64_t cache_block_address(const Cache *cache, uint64_t address);
 
 /*
  * Destructs a deallocates a cache and its components.

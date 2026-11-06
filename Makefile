@@ -8,7 +8,7 @@ SOURCES := src/main.c src/cache.c src/replacement.c src/hierarchy.c src/parse_co
 LIB_SOURCES := src/cache.c src/replacement.c src/hierarchy.c src/parse_config.c src/trace.c
 HEADERS := src/cache.h src/config.h src/hierarchy.h src/parse_config.h src/replacement.h src/trace.h
 
-.PHONY: all debug test run clean
+.PHONY: all debug tests test run clean
 
 all: $(TARGET)
 
@@ -23,8 +23,10 @@ debug: $(DEBUG_TARGET)
 $(TEST_TARGET): tests/test_cache.c $(LIB_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ tests/test_cache.c $(LIB_SOURCES) $(LDLIBS)
 
-tests: $(TEST_TARGET)
+test: $(TEST_TARGET)
 	./$(TEST_TARGET)
+
+tests: test
 
 run: $(TARGET)
 	./$(TARGET)

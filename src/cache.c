@@ -83,8 +83,13 @@ Cache* create_cache(const Config* config) {
 CacheAccessResult cache_access(    
     Cache *cache,
     uint64_t address,
-    CacheOperation operation
+    CacheOperation operation,
+    CacheEviction *eviction
 ) {
+    if (eviction != NULL) {
+        eviction->dirty = false;
+        eviction->address = 0;
+    }
     if (cache == NULL) return CACHE_MISS;
 
     // From address, find the set index, tag, offset.
@@ -117,7 +122,19 @@ CacheAccessResult cache_access(
         victim_index = replacement_choose_victim(cache, start, end);
         CacheLine* victim = &cache->cache_lines[victim_index];
         ++cache->stats.evictions;
-        if (victim->dirty) ++cache->stats.writebacks;
+        if (victim->dirty) {
+            ++cache->stats.writebacks;
+            if (eviction != NULL) {
+                // Rebuild the victim's block address from its tag and set.
+                eviction->dirty = true;
+                const unsigned tag_shift =
+                    (unsigned)cache->offset_bits + cache->set_index_bits;
+                const uint64_t tag_part =
+                    tag_shift >= ADDRESS_BITS ? 0 : victim->tag << tag_shift;
+                eviction->address =
+                    tag_part | (set_index << cache->offset_bits);
+            }
+        }
     }
 
     CacheLine* line = &cache->cache_lines[victim_index];
@@ -127,6 +144,11 @@ CacheAccessResult cache_access(
     line->insertion_time = now;
     line->last_access = now;
     return CACHE_MISS;
+}
+
+uint64_t cache_block_address(const Cache *cache, uint64_t address) {
+    if (cache == NULL) return address;
+    return address & ~(((uint64_t)1 << cache->offset_bits) - 1);
 }
 
 void cache_destroy(Cache* cache) {

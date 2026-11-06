@@ -5,8 +5,8 @@
 #include "cache.h"
 
 /* Called once per cache access parsed from a trace record. */
-typedef int (*TraceCallback)(uint64_t address, CacheOperation operation,
-                             void* context);
+typedef int (*TraceCallback)(uint64_t address, uint64_t size,
+                             CacheOperation operation, void* context);
 
 /*
  * Parses a Valgrind-style trace (I/L/S/M address,size). Instruction fetches

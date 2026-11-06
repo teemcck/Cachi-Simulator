@@ -29,11 +29,15 @@ void free_cache_hierarchy(CacheHierarchy* hierarchy);
 /*
  * Creates a request to a cache hierarchy.
  * 
- * Requests provide referenced memory address and Read/Write.
+ * Requests provide the referenced memory address, its size in bytes, and
+ * Read/Write. An access that spans several blocks is split into one request
+ * per block at each level. A miss fetches the whole block from the next
+ * level, and evicted dirty blocks are written back to the next level.
  */
 void hierarchy_access(
     CacheHierarchy* hierarchy,
     uint64_t address,
+    uint64_t size,
     CacheOperation operation
 );
 

@@ -43,16 +43,52 @@ void free_cache_hierarchy(CacheHierarchy* hierarchy) {
     free(hierarchy);
 }
 
+static void access_level(
+    CacheHierarchy* hierarchy,
+    size_t level,
+    uint64_t address,
+    uint64_t size,
+    CacheOperation operation
+) {
+    // Accesses that fall out of the last level go to memory, which is not modeled.
+    if (level >= hierarchy->num_levels) return;
+    if (size == 0) size = 1;
+
+    Cache* cache = hierarchy->levels[level];
+    const uint64_t block_size = (uint64_t)cache->config.block_size;
+    const uint64_t last_byte = address + (size - 1);
+
+    // Visit every block this access touches, one request per block.
+    uint64_t block = cache_block_address(cache, address);
+    const uint64_t last_block = cache_block_address(cache, last_byte);
+    while (1) {
+        const uint64_t request = block > address ? block : address;
+
+        CacheEviction eviction;
+        const CacheAccessResult result =
+            cache_access(cache, request, operation, &eviction);
+
+        // A dirty victim is written back to the next level as a full block.
+        if (eviction.dirty) {
+            access_level(hierarchy, level + 1, eviction.address,
+                         block_size, CACHE_WRITE);
+        }
+        // A miss fetches the whole block from the next level.
+        if (result == CACHE_MISS) {
+            access_level(hierarchy, level + 1, block, block_size, CACHE_READ);
+        }
+
+        if (block == last_block) break;
+        block += block_size;
+    }
+}
+
 void hierarchy_access(
     CacheHierarchy* hierarchy,
     uint64_t address,
+    uint64_t size,
     CacheOperation operation
 ) {
     if (hierarchy == NULL) return;
-
-    for (size_t i = 0; i < hierarchy->num_levels; ++i) {
-        if (cache_access(hierarchy->levels[i], address, operation) == CACHE_HIT) {
-            return;
-        }
-    }
+    access_level(hierarchy, 0, address, size, operation);
 }

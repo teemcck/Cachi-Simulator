@@ -8,14 +8,9 @@
 // Date (M/D/Y): 10/18/26
 // References: https://www.cs.cornell.edu/courses/cs3410/2026sp/notes/caches
 
-// TODO:
-// - Split memory accesses that cross cache block boundaries.
-// - Define and implement hierarchy write behavior and dirty writeback propagation.
-// - Add a CSV output mode for simulation statistics.
-
-static int simulate_access(uint64_t address, CacheOperation operation,
-                           void* context) {
-    hierarchy_access(context, address, operation);
+static int simulate_access(uint64_t address, uint64_t size,
+                           CacheOperation operation, void* context) {
+    hierarchy_access(context, address, size, operation);
     return 0;
 }
 

@@ -45,8 +45,17 @@ L1: accesses=1000 hits=900 misses=100 hit_rate=90.00% miss_rate=10.00% evictions
 - `evictions` counts valid cache lines replaced; `writebacks` counts evicted
   dirty lines.
 
-Lower-level caches see only requests that missed in the preceding level. Their
-access counts and rates are therefore calculated from fewer requests than L1.
+Lower-level caches see two kinds of requests from the level above: a block
+fetch (read) for every miss, and a block write for every dirty writeback.
+Their access counts and rates are therefore calculated from different requests
+than L1's. Writebacks from the last level go to memory, which is not modeled.
+
+## Write behavior
+
+Every level is write-back and write-allocate. A store marks the line dirty in
+the level it hits (or is allocated in) only. When a dirty line is evicted, the
+whole block is written to the next level, which may in turn evict and write
+back its own dirty lines.
 
 ## Configuration format
 
@@ -67,7 +76,9 @@ Supported replacement names are `LRU`, `FIFO`, `MRU`, and `RR` (random).
 
 The trace parser accepts Valgrind Lackey records in the form
 `operation address,size`, such as `L 7ff00000,8`. `L` is a read, `S` is a
-write, `M` is treated as a read followed by a write, and `I` is ignored. The
+write, `M` is treated as a read followed by a write, and `I` is ignored. An
+access that crosses a block boundary is split into one request per block, using
+each level's own block size. The
 included benchmark traces contain data operations (`L`, `S`, and `M`); they
 were generated from `fib.c` with input `20` and optimized `strided.c` with
 stride `64`.
@@ -88,6 +99,8 @@ make test
 
 ## TODO
 
-- Split memory accesses that cross cache block boundaries.
-- Define and implement hierarchy write behavior and dirty writeback propagation.
-- Add a CSV output mode for simulation statistics.
+- Add more complex replacement policies, such as tree pseudo-LRU and RRIP.
+- Make the write policy configurable per level (write-through,
+  no-write-allocate).
+- Add inclusive and exclusive hierarchy modes; lower levels are currently
+  non-inclusive and are never back-invalidated.
